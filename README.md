@@ -9,6 +9,11 @@ and opt-in GoMLX/MLX integrations. QLoRA follows the quantized-weight layer.
 
 Early development. The public API may change before v1.0.
 
+## Scope
+
+`go-peft` provides PEFT algorithms, quantization, adapter formats, and
+architecture-neutral base-weight streaming through its framework bridges.
+
 ## Install
 
 ```sh
@@ -22,6 +27,31 @@ go test ./...
 go vet ./...
 go test -bench=. -benchmem ./lora
 ```
+
+Format fuzzing uses bounded inputs and can run locally:
+
+```sh
+go test -parallel=1 -fuzz=FuzzReadAndVisit -fuzztime=30s ./format/safetensors
+go test -parallel=1 -fuzz=FuzzRead -fuzztime=30s ./format/gguf
+go test -parallel=1 -fuzz=FuzzInspectManifest -fuzztime=30s ./format/huggingface/model
+```
+
+## Training utilities
+
+`profiles` supplies target presets for Llama, Mistral, Qwen2, Gemma, and Phi-3.
+`trainer` provides backend-neutral accumulation, gradient-clip hooks, reporting,
+and checkpoint cadence. The optional CLI inspects adapters and dry-runs target
+matching before model mutation.
+
+```sh
+go run ./cmd/go-peft targets --family llama --mode all-linear
+go run ./cmd/go-peft plan --family llama --modules modules.txt
+go run ./cmd/go-peft validate --adapter adapter-dir
+go run ./cmd/go-peft inspect-model --model model-dir
+go run ./cmd/go-peft inspect-gguf --model model.gguf
+```
+
+See [training integration](docs/training.md), [base-model loading](docs/base-models.md), and [GGUF](docs/gguf.md).
 
 ## Minimal CPU example
 
@@ -158,8 +188,10 @@ passthrough. Native Windows CUDA builds are not supported yet.
 
 | Integration | Use | Status |
 | --- | --- | --- |
-| SafeTensors | `format/safetensors` | Read/write F32 |
+| SafeTensors | `format/safetensors` | Read/write F32; streaming F32/F16/BF16 decode |
 | Hugging Face PEFT | `format/huggingface` | LoRA and QLoRA adapter layout |
+| Hugging Face base model | `format/huggingface/model` | Config plus single/sharded SafeTensors streaming |
+| GGUF | `format/gguf` | Read-only v3 metadata and tensor index |
 | GoMLX | `go test -tags gomlx ./backends/gomlx` | LoRA and native NF4 QLoRA bridge |
 | MLX C | `go test -tags mlx ./backends/mlx` | Apple Silicon LoRA + dropout training and affine-int4 QLoRA |
 | CUDA | `go test -tags cuda ./backends/cuda` | Linux NVIDIA cuBLAS LoRA and int4/NF4 QLoRA bridge |
@@ -178,7 +210,7 @@ The functional PEFT-parity suite is written in Go. See
 
 ## Roadmap
 
-1. NVIDIA-runner validation and CUDA kernel tuning
+1. NVIDIA-runner benchmark publication and CUDA kernel tuning
 2. More Hugging Face base-model fixtures and PEFT methods
 
 ## Release quality

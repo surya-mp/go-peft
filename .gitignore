@@ -27,8 +27,7 @@ coverage/
 *.swp
 *.swo
 
-# Local planning and maintainer-only release notes.
-plan.md
+# Maintainer-only release notes.
 CHANGELOG.md
 CONTRIBUTING.md
 RELEASING.md

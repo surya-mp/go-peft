@@ -8,11 +8,11 @@
 | PEFT LoRA behavior | Go parity tests for injection, A/B lifecycle, merge, dropout, state, and QLoRA contract |
 | GoMLX LoRA / QLoRA graphs | Tested |
 | MLX LoRA / affine-int4 QLoRA | GPU forward, persistence, native-gradient training, and adapter dropout on Apple Silicon |
-| CUDA execution | Opt-in Linux NVIDIA bridge; source, tests, and dropout support await native validation |
+| CUDA execution | Validated native Linux NVIDIA bridge: LoRA, int4/NF4 QLoRA, training, and dropout |
 
-The library does not load models, datasets, tokenizers, or optimizers. Host
-frameworks own those concerns and use this package for adapter operations.
 The GoMLX dependency currently cannot run under Go's race detector.
+
+Native CUDA validation details are recorded in [CUDA validation](cuda-validation-2026-09-11.md).
 
 MLX C exposes native packed affine int4 operations only. Its QLoRA bridge
 therefore rejects NF4 and double quantization rather than silently dequantizing

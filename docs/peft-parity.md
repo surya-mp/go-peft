@@ -13,6 +13,7 @@ PEFT methods this module does not implement.
 | Merge and restore | `lora/TestPEFTParityLoRALifecycle` |
 | Dropout and bias modes | `lora/TestPEFTParityZeroDropout`, `TestPEFTParityTrainingDropoutAndBiasModes` |
 | Adapter state round-trip and strict rejection | `format/huggingface/TestLoRAAdapterRoundTrip`, `TestQLoRAAdapterRoundTrip`, `TestPEFTParityAdapterStateValidation` |
+| Static PEFT-format adapter fixture | `format/huggingface/TestPEFTGoldenAdapterFixture` |
 | Portable `lora_only` bias state | `format/huggingface/TestPEFTParityPortableBiasState` |
 | NF4 and double quantization | `qlora/TestNF4DoubleQuantForward`, `TestPEFTParityQLoRAContract` |
 | Quantized merge rejection | `qlora/TestMergeIsRejected`, `TestPEFTParityQLoRAContract` |
@@ -28,4 +29,4 @@ integration.
 | CPU | Full parity matrix, quantization, serialization, and race tests |
 | GoMLX | Native LoRA/QLoRA graph and training tests |
 | MLX | Native GPU forward, persistence, adapter-training, and dropout-training tests |
-| CUDA | Native source and tests present; NVIDIA execution pending |
+| CUDA | Native forward, int4/NF4, training, and dropout tests validated on NVIDIA |

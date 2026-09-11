@@ -1,4 +1,4 @@
-// Package safetensors reads and writes the SafeTensors float32 format.
+// Package safetensors reads and writes SafeTensors files.
 package safetensors
 
 import (
@@ -27,6 +27,18 @@ type Tensor struct {
 	Shape []int
 	Data  []float32
 }
+
+// DecodedTensor is one decoded SafeTensors value.
+// Visit keeps only this tensor's data in memory at once.
+type DecodedTensor struct {
+	Name  string
+	DType string
+	Shape []int
+	Data  []float32
+}
+
+// Visitor receives a decoded tensor while streaming a file.
+type Visitor func(DecodedTensor) error
 
 type headerTensor struct {
 	DType       string    `json:"dtype"`
@@ -177,6 +189,93 @@ func ReadFile(path string) (map[string]Tensor, map[string]string, error) {
 	return Read(file)
 }
 
+// Visit streams F32, F16, and BF16 tensors in file-offset order.
+// keep may be nil; a false result skips decoding that tensor.
+func Visit(r io.Reader, keep func(name string) bool, visit Visitor) (map[string]string, error) {
+	if visit == nil {
+		return nil, fmt.Errorf("%w: visitor is required", ErrInvalidTensor)
+	}
+	var length [8]byte
+	if _, err := io.ReadFull(r, length[:]); err != nil {
+		return nil, fmt.Errorf("%w: header length: %v", ErrInvalidFile, err)
+	}
+	headerSize := binary.LittleEndian.Uint64(length[:])
+	if headerSize == 0 || headerSize > maxHeaderSize {
+		return nil, ErrInvalidFile
+	}
+	rawHeader := make([]byte, headerSize)
+	if _, err := io.ReadFull(r, rawHeader); err != nil {
+		return nil, fmt.Errorf("%w: header: %v", ErrInvalidFile, err)
+	}
+	if rawHeader[0] != '{' {
+		return nil, ErrInvalidFile
+	}
+	header, metadata, err := parseHeader(rawHeader)
+	if err != nil {
+		return nil, err
+	}
+
+	type entry struct {
+		name   string
+		tensor headerTensor
+		bytes  uint64
+	}
+	entries := make([]entry, 0, len(header))
+	for name, tensor := range header {
+		width, ok := dtypeWidth(tensor.DType)
+		if !ok {
+			return nil, fmt.Errorf("%w: %s", ErrUnsupportedType, tensor.DType)
+		}
+		count, err := shapeCount(tensor.Shape)
+		if err != nil || count > math.MaxUint64/width {
+			return nil, fmt.Errorf("%w: %s", ErrInvalidTensor, name)
+		}
+		bytes := count * width
+		if tensor.DataOffsets[1] < tensor.DataOffsets[0] || tensor.DataOffsets[1]-tensor.DataOffsets[0] != bytes {
+			return nil, fmt.Errorf("%w: %s", ErrInvalidTensor, name)
+		}
+		entries = append(entries, entry{name: name, tensor: tensor, bytes: bytes})
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].tensor.DataOffsets[0] < entries[j].tensor.DataOffsets[0] })
+	var expected uint64
+	for _, entry := range entries {
+		if entry.tensor.DataOffsets[0] != expected || entry.bytes > math.MaxInt64 {
+			return nil, ErrInvalidFile
+		}
+		expected += entry.bytes
+	}
+
+	for _, entry := range entries {
+		if keep != nil && !keep(entry.name) {
+			if _, err := io.CopyN(io.Discard, r, int64(entry.bytes)); err != nil {
+				return nil, fmt.Errorf("%w: tensor data: %v", ErrInvalidFile, err)
+			}
+			continue
+		}
+		data, err := decode(r, entry.tensor.DType, entry.tensor.Shape)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %s: %v", ErrInvalidFile, entry.name, err)
+		}
+		if err := visit(DecodedTensor{Name: entry.name, DType: entry.tensor.DType, Shape: append([]int(nil), entry.tensor.Shape...), Data: data}); err != nil {
+			return nil, err
+		}
+	}
+	if err := requireEOF(r); err != nil {
+		return nil, err
+	}
+	return metadata, nil
+}
+
+// VisitFile opens and streams a SafeTensors file.
+func VisitFile(path string, keep func(name string) bool, visit Visitor) (map[string]string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = file.Close() }()
+	return Visit(file, keep, visit)
+}
+
 func parseHeader(raw []byte) (map[string]headerTensor, map[string]string, error) {
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	token, err := decoder.Token()
@@ -230,6 +329,14 @@ func tensorBytes(tensor Tensor) (uint64, error) {
 }
 
 func shapeBytes(shape []int) (uint64, error) {
+	count, err := shapeCount(shape)
+	if err != nil || count > math.MaxUint64/4 {
+		return 0, ErrInvalidTensor
+	}
+	return count * 4, nil
+}
+
+func shapeCount(shape []int) (uint64, error) {
 	count := uint64(1)
 	for _, dimension := range shape {
 		if dimension < 0 || count > math.MaxUint64/uint64(max(1, dimension)) {
@@ -237,10 +344,75 @@ func shapeBytes(shape []int) (uint64, error) {
 		}
 		count *= uint64(dimension)
 	}
-	if count > math.MaxUint64/4 {
-		return 0, ErrInvalidTensor
+	return count, nil
+}
+
+func dtypeWidth(dtype string) (uint64, bool) {
+	switch dtype {
+	case "F32":
+		return 4, true
+	case "F16", "BF16":
+		return 2, true
+	default:
+		return 0, false
 	}
-	return count * 4, nil
+}
+
+func decode(r io.Reader, dtype string, shape []int) ([]float32, error) {
+	count, err := shapeCount(shape)
+	if err != nil || count > uint64(^uint(0)>>1) {
+		return nil, ErrInvalidTensor
+	}
+	data := make([]float32, int(count))
+	switch dtype {
+	case "F32":
+		var encoded [4]byte
+		for index := range data {
+			if _, err := io.ReadFull(r, encoded[:]); err != nil {
+				return nil, err
+			}
+			data[index] = math.Float32frombits(binary.LittleEndian.Uint32(encoded[:]))
+		}
+	case "F16", "BF16":
+		var encoded [2]byte
+		for index := range data {
+			if _, err := io.ReadFull(r, encoded[:]); err != nil {
+				return nil, err
+			}
+			bits := binary.LittleEndian.Uint16(encoded[:])
+			if dtype == "F16" {
+				data[index] = float16(bits)
+			} else {
+				data[index] = math.Float32frombits(uint32(bits) << 16)
+			}
+		}
+	default:
+		return nil, ErrUnsupportedType
+	}
+	return data, nil
+}
+
+func float16(bits uint16) float32 {
+	sign := uint32(bits&0x8000) << 16
+	exponent := int32(bits>>10) & 0x1f
+	fraction := uint32(bits & 0x03ff)
+	switch exponent {
+	case 0:
+		if fraction == 0 {
+			return math.Float32frombits(sign)
+		}
+		exponent = -14
+		for fraction&0x0400 == 0 {
+			fraction <<= 1
+			exponent--
+		}
+		fraction &= 0x03ff
+	case 31:
+		return math.Float32frombits(sign | 0x7f800000 | fraction<<13)
+	default:
+		exponent -= 15
+	}
+	return math.Float32frombits(sign | uint32(exponent+127)<<23 | fraction<<13)
 }
 
 func requireEOF(r io.Reader) error {
