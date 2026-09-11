@@ -4,6 +4,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int peft_cuda_device_count(int* count);
 int peft_cuda_new(void** context, int device);
 int peft_cuda_free_context(void* context);
@@ -21,5 +25,9 @@ int peft_cuda_axpy(void* context, void* dst, const void* src, int count, float a
 int peft_cuda_add_row(void* dst, const void* row, int rows, int cols);
 int peft_cuda_quantized_linear(void* context, void* dst, const void* input, const void* codes, const void* scales, const void* scale_codes, const void* scale_scales, int rows, int out, int in, int block_size, int scale_block_size, int scheme, float alpha, float beta);
 const char* peft_cuda_last_error(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
