@@ -1,0 +1,20 @@
+name: cuda
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: [self-hosted, linux, x64, cuda]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - run: sh scripts/build_cuda.sh
+      - run: go test -tags cuda ./backends/cuda
+      - run: go run -tags cuda ./examples/lora/cuda
+      - run: go run -tags cuda ./examples/qlora/cuda

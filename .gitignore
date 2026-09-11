@@ -1,0 +1,34 @@
+# Generated CUDA build artifacts.
+backends/cuda/gopeft_cuda.o
+backends/cuda/libgopeftcuda.a
+backends/cuda/*.d
+
+# Go build, test, coverage, and profiling output.
+bin/
+build/
+dist/
+*.test
+*.out
+coverage.out
+coverage/
+*.prof
+*.pprof
+
+# Local tool caches and environment files.
+.golangci-cache/
+.env
+.env.*
+!.env.example
+
+# Local editor and operating-system files.
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local planning and maintainer-only release notes.
+plan.md
+CHANGELOG.md
+CONTRIBUTING.md
+RELEASING.md

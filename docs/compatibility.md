@@ -1,0 +1,20 @@
+# Compatibility
+
+| Feature | Status |
+| --- | --- |
+| LoRA / QLoRA CPU | Tested |
+| NF4 / double quantization | Tested on CPU; GoMLX NF4 tested |
+| Hugging Face PEFT layout | Go LoRA/QLoRA SafeTensors round-trips |
+| PEFT LoRA behavior | Go parity tests for injection, A/B lifecycle, merge, dropout, state, and QLoRA contract |
+| GoMLX LoRA / QLoRA graphs | Tested |
+| MLX LoRA / affine-int4 QLoRA | GPU forward, persistence, native-gradient training, and adapter dropout on Apple Silicon |
+| CUDA execution | Opt-in Linux NVIDIA bridge; source, tests, and dropout support await native validation |
+
+The library does not load models, datasets, tokenizers, or optimizers. Host
+frameworks own those concerns and use this package for adapter operations.
+The GoMLX dependency currently cannot run under Go's race detector.
+
+MLX C exposes native packed affine int4 operations only. Its QLoRA bridge
+therefore rejects NF4 and double quantization rather than silently dequantizing
+the base model. NF4/double quant are available on CPU, GoMLX, and CUDA.
+An MLX context is goroutine-confined until it is closed.

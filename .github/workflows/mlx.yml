@@ -1,0 +1,20 @@
+name: mlx
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - run: brew install mlx-c
+      - run: go test -tags mlx ./backends/mlx
+      - run: go run -tags mlx ./examples/lora/mlx
+      - run: go run -tags mlx ./examples/qlora/mlx
