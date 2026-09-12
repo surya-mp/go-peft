@@ -10,14 +10,19 @@ import (
 
 // Module is one replaceable base linear layer.
 type Module struct {
-	Name   string
+	// Name is the host model's fully qualified module name.
+	Name string
+	// Weight is the frozen [outFeatures, inFeatures] base weight.
 	Weight backend.Tensor
-	Bias   backend.Tensor
+	// Bias is an optional [1, outFeatures] host bias.
+	Bias backend.Tensor
 }
 
 // Replacement associates a model module with its LoRA wrapper.
 type Replacement struct {
-	Name  string
+	// Name identifies the host module to replace.
+	Name string
+	// Layer is the LoRA wrapper for Name.
 	Layer *Linear
 }
 

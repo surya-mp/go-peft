@@ -5,6 +5,7 @@ import "math"
 // BiasMode selects which bias parameters the host should train.
 type BiasMode uint8
 
+// BiasMode values select trainable host biases.
 const (
 	BiasNone BiasMode = iota
 	BiasAll
@@ -13,11 +14,17 @@ const (
 
 // Config configures one LoRA adapter.
 type Config struct {
-	Rank          int
-	Alpha         float32
-	Dropout       float32
+	// Rank is the inner dimension of A and B. It must be positive.
+	Rank int
+	// Alpha scales the update by Alpha / Rank. It must be finite and non-negative.
+	Alpha float32
+	// Dropout is applied to the LoRA branch only during training.
+	// It must be in [0, 1).
+	Dropout float32
+	// TargetModules contains exact module names or dot-separated suffixes to replace.
 	TargetModules []string
-	Bias          BiasMode
+	// Bias selects which host bias parameters remain trainable.
+	Bias BiasMode
 }
 
 // Validate reports configuration errors before injection mutates a model.

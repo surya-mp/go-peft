@@ -37,10 +37,16 @@ type QuantizedWeight interface {
 
 // QuantizationMetadata describes immutable quantized-weight storage.
 type QuantizationMetadata struct {
-	Scheme         string
-	Bits           int
-	BlockSize      int
-	DoubleQuant    bool
+	// Scheme identifies the quantizer, such as "int4" or "nf4".
+	Scheme string
+	// Bits is the number of bits used for each weight code.
+	Bits int
+	// BlockSize is the number of weights sharing one scale.
+	BlockSize int
+	// DoubleQuant reports whether block scales are quantized.
+	DoubleQuant bool
+	// ScaleBlockSize is the number of scales sharing one second-level scale.
+	// It is zero when DoubleQuant is false.
 	ScaleBlockSize int
 }
 
@@ -52,9 +58,13 @@ type QuantizedWeightMetadata interface {
 
 // QuantizedStorage is the portable packed representation used by native kernels.
 type QuantizedStorage struct {
-	Codes       []byte
-	Scales      []float32
-	ScaleCodes  []byte
+	// Codes contains packed primary quantization codes.
+	Codes []byte
+	// Scales contains F32 block scales when double quantization is disabled.
+	Scales []float32
+	// ScaleCodes contains quantized block scales when double quantization is enabled.
+	ScaleCodes []byte
+	// ScaleScales contains F32 second-level scale values.
 	ScaleScales []float32
 }
 

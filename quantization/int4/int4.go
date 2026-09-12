@@ -8,6 +8,8 @@ import (
 	"github.com/surya-mp/go-peft/backend"
 )
 
+// Errors returned while creating int4 matrices.
+// Callers can test them with errors.Is.
 var (
 	ErrInvalidShape     = errors.New("int4: invalid matrix shape")
 	ErrInvalidBlockSize = errors.New("int4: block size must be positive")

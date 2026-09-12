@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+// Errors returned while resolving or validating target-module profiles.
+// Callers can test them with errors.Is.
 var (
 	ErrUnknownFamily = errors.New("profiles: unknown model family")
 	ErrUnknownMode   = errors.New("profiles: unknown target mode")
@@ -16,6 +18,7 @@ var (
 // Family identifies a transformer projection naming convention.
 type Family string
 
+// Family values identify supported transformer naming conventions.
 const (
 	Llama   Family = "llama"
 	Mistral Family = "mistral"
@@ -27,6 +30,7 @@ const (
 // Mode selects attention-only or QLoRA-style all-linear targeting.
 type Mode string
 
+// Mode values select a profile's target-module set.
 const (
 	Attention Mode = "attention"
 	AllLinear Mode = "all-linear"
@@ -34,9 +38,12 @@ const (
 
 // Profile maps a model family to stable linear-module suffixes.
 type Profile struct {
-	Family    Family
+	// Family identifies the profile's transformer naming convention.
+	Family Family
+	// Attention lists suffixes for attention-only adaptation.
 	Attention []string
-	Linear    []string
+	// Linear lists suffixes for all-linear adaptation.
+	Linear []string
 }
 
 // Resolve returns a copy of the profile for one supported model family.
@@ -113,10 +120,15 @@ func Plan(family Family, mode Mode, modules []string) (InjectionPlan, error) {
 
 // InjectionPlan is a side-effect-free target matching result.
 type InjectionPlan struct {
-	Family  Family   `json:"family"`
-	Mode    Mode     `json:"mode"`
+	// Family identifies the resolved transformer profile.
+	Family Family `json:"family"`
+	// Mode identifies the requested targeting mode.
+	Mode Mode `json:"mode"`
+	// Targets are the requested module suffixes.
 	Targets []string `json:"targets"`
+	// Matched contains discovered module names selected for injection.
 	Matched []string `json:"matched"`
+	// Missing contains target suffixes not found in the discovered model.
 	Missing []string `json:"missing"`
 }
 

@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// ErrInvalidConfig reports invalid trainer configuration or a missing loop.
 var ErrInvalidConfig = errors.New("trainer: invalid configuration")
 
 // Loop owns batches, forward/backward execution, and optimizer state.
@@ -30,10 +31,14 @@ type Checkpointer interface {
 
 // Config controls generic accumulation, reporting, and checkpoint cadence.
 type Config struct {
-	Steps             int
+	// Steps is the number of optimizer updates to run.
+	Steps int
+	// AccumulationSteps is the number of micro-batches per optimizer update.
 	AccumulationSteps int
-	GradientClip      float32
-	CheckpointEvery   int
+	// GradientClip is the optional native clip limit. Zero disables clipping.
+	GradientClip float32
+	// CheckpointEvery saves after every N completed updates. Zero disables it.
+	CheckpointEvery int
 }
 
 // Validate rejects invalid loop settings before work starts.
@@ -46,18 +51,26 @@ func (c Config) Validate() error {
 
 // State describes a completed optimizer step.
 type State struct {
-	Step      int
-	Loss      float64
-	Duration  time.Duration
+	// Step is the one-based completed optimizer-update count.
+	Step int
+	// Loss is the mean loss across the completed micro-batches.
+	Loss float64
+	// Duration is the elapsed time for the completed update.
+	Duration time.Duration
+	// Timestamp is the UTC completion time.
 	Timestamp time.Time
 }
 
 // Runner executes a backend-neutral training loop.
 type Runner struct {
-	Config       Config
-	Loop         Loop
+	// Config controls update cadence and accumulation.
+	Config Config
+	// Loop owns framework-specific forward, backward, and optimizer work.
+	Loop Loop
+	// Checkpointer optionally saves state at Config.CheckpointEvery.
 	Checkpointer Checkpointer
-	Report       func(State)
+	// Report optionally receives each completed update state.
+	Report func(State)
 }
 
 // Run executes configured optimizer steps or stops on context cancellation.

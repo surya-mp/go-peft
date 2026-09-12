@@ -21,13 +21,21 @@ import (
 
 // NF4Weight stores [input, output] NF4 codes and per-input block scales.
 type NF4Weight struct {
-	InputFeatures  int
+	// InputFeatures is the number of input columns.
+	InputFeatures int
+	// OutputFeatures is the number of output columns.
 	OutputFeatures int
-	BlockSize      int
-	Packed         []byte
-	Scales         []float32
-	ScaleCodes     []byte
-	ScaleScales    []float32
+	// BlockSize is the number of output values sharing one scale.
+	BlockSize int
+	// Packed contains two NF4 codes per byte in [input, output] order.
+	Packed []byte
+	// Scales contains F32 block scales without double quantization.
+	Scales []float32
+	// ScaleCodes contains 8-bit block scales with double quantization.
+	ScaleCodes []byte
+	// ScaleScales contains F32 second-level scales.
+	ScaleScales []float32
+	// ScaleBlockSize is zero without double quantization.
 	ScaleBlockSize int
 }
 
@@ -154,15 +162,21 @@ type NF4Linear struct {
 
 // NF4Module is one host-discovered quantized linear module.
 type NF4Module struct {
-	Name   string
-	Scope  *model.Scope
+	// Name is the host model's fully qualified module name.
+	Name string
+	// Scope owns variables created for the replacement layer.
+	Scope *model.Scope
+	// Weight is the frozen NF4 base weight.
 	Weight *NF4Weight
-	Bias   *model.Variable
+	// Bias is the optional host bias variable.
+	Bias *model.Variable
 }
 
 // NF4Replacement associates a host module with its native QLoRA layer.
 type NF4Replacement struct {
-	Name  string
+	// Name identifies the host module to replace.
+	Name string
+	// Layer is the native GoMLX NF4 LoRA layer for Name.
 	Layer *NF4Linear
 }
 

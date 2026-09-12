@@ -11,6 +11,7 @@ import (
 	"sort"
 )
 
+// Version is the supported GGUF container version.
 const (
 	Version = 3
 
@@ -19,6 +20,8 @@ const (
 	maxStringSize    = 16 << 20
 )
 
+// Errors returned while inspecting GGUF files.
+// Callers can test them with errors.Is.
 var (
 	ErrInvalidFile         = errors.New("gguf: invalid file")
 	ErrUnsupported         = errors.New("gguf: unsupported version")
@@ -61,23 +64,36 @@ var typeNames = map[Type]string{
 
 // Tensor identifies a GGUF tensor. Offset is absolute from the start of file.
 type Tensor struct {
-	Name     string   `json:"name"`
-	Shape    []uint64 `json:"shape"`
-	Type     Type     `json:"type"`
-	Encoding string   `json:"encoding"`
-	Offset   uint64   `json:"offset"`
+	// Name is the GGUF tensor name.
+	Name string `json:"name"`
+	// Shape contains GGML dimensions in file order.
+	Shape []uint64 `json:"shape"`
+	// Type identifies the GGML tensor encoding.
+	Type Type `json:"type"`
+	// Encoding is Type's human-readable name.
+	Encoding string `json:"encoding"`
+	// Offset is the absolute tensor-data offset from the start of the file.
+	Offset uint64 `json:"offset"`
 }
 
 // Info is the read-only GGUF model index.
 type Info struct {
-	Version             uint32   `json:"version"`
-	Architecture        string   `json:"architecture"`
-	Name                string   `json:"name,omitempty"`
-	Alignment           uint32   `json:"alignment"`
-	QuantizationVersion uint32   `json:"quantization_version,omitempty"`
-	FileType            uint32   `json:"file_type,omitempty"`
-	DataOffset          uint64   `json:"data_offset"`
-	Tensors             []Tensor `json:"tensors"`
+	// Version is the GGUF format version.
+	Version uint32 `json:"version"`
+	// Architecture is the general.architecture metadata value.
+	Architecture string `json:"architecture"`
+	// Name is the optional general.name metadata value.
+	Name string `json:"name,omitempty"`
+	// Alignment is the tensor-data alignment in bytes.
+	Alignment uint32 `json:"alignment"`
+	// QuantizationVersion is the optional general.quantization_version value.
+	QuantizationVersion uint32 `json:"quantization_version,omitempty"`
+	// FileType is the optional general.file_type value.
+	FileType uint32 `json:"file_type,omitempty"`
+	// DataOffset is the start of the aligned tensor-data section.
+	DataOffset uint64 `json:"data_offset"`
+	// Tensors is the tensor index in ascending data-offset order.
+	Tensors []Tensor `json:"tensors"`
 }
 
 // Read parses a GGUF v3 file's metadata and tensor index. Tensor payloads stay

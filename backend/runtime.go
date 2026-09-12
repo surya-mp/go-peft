@@ -5,11 +5,13 @@ import (
 	"log"
 )
 
+// ErrCUDAUnavailable reports that GPU execution could not be selected.
 var ErrCUDAUnavailable = errors.New("backend: CUDA is unavailable")
 
 // Device identifies the selected execution device.
 type Device uint8
 
+// Device values identify runtime selection outcomes.
 const (
 	DeviceUnavailable Device = iota
 	DeviceCPU
@@ -28,8 +30,11 @@ type RuntimeOptions struct {
 
 // Runtime describes the explicitly selected execution engine.
 type Runtime struct {
-	Engine  EagerEngine
-	Device  Device
+	// Engine is the selected eager engine. It is nil when DeviceUnavailable.
+	Engine EagerEngine
+	// Device identifies the selected execution device.
+	Device Device
+	// Warning is ErrCUDAUnavailable when CUDA selection failed.
 	Warning error
 }
 

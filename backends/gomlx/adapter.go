@@ -12,19 +12,26 @@ import (
 	"github.com/surya-mp/go-peft/peft"
 )
 
+// ErrNoTargetModules reports that no host module matched the LoRA targets.
 var ErrNoTargetModules = errors.New("gomlx: no target modules matched")
 
 // Module is one host-discovered GoMLX linear module.
 type Module struct {
-	Name   string
-	Scope  *model.Scope
+	// Name is the host model's fully qualified module name.
+	Name string
+	// Scope owns variables created for the replacement layer.
+	Scope *model.Scope
+	// Weight is the frozen base linear variable.
 	Weight *model.Variable
-	Bias   *model.Variable
+	// Bias is the optional host bias variable.
+	Bias *model.Variable
 }
 
 // Replacement associates a model path with its native LoRA layer.
 type Replacement struct {
-	Name  string
+	// Name identifies the host module to replace.
+	Name string
+	// Layer is the native GoMLX LoRA layer for Name.
 	Layer *Linear
 }
 

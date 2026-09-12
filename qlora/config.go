@@ -1,4 +1,7 @@
-// Package qlora provides LoRA over frozen quantized base weights.
+// Package qlora implements LoRA over frozen int4 or NF4 linear weights.
+//
+// QLoRA layers preserve trainable float32 A and B matrices but do not support
+// merging their update into the quantized base matrix.
 package qlora
 
 import (
@@ -7,6 +10,8 @@ import (
 	"github.com/surya-mp/go-peft/lora"
 )
 
+// Errors returned by QLoRA configuration validation.
+// Callers can test them with errors.Is.
 var (
 	ErrInvalidBlockSize       = errors.New("qlora: block size must be positive")
 	ErrInvalidQuantization    = errors.New("qlora: invalid quantization")
@@ -26,10 +31,17 @@ const (
 
 // Config combines LoRA settings with a hardware-neutral 4-bit base weight.
 type Config struct {
-	LoRA           lora.Config
-	BlockSize      int
-	Quantization   Quantization
-	DoubleQuant    bool
+	// LoRA configures the trainable adapter matrices.
+	LoRA lora.Config
+	// BlockSize is the number of base weights sharing one primary scale.
+	BlockSize int
+	// Quantization selects int4 or NF4 for the frozen base weight.
+	Quantization Quantization
+	// DoubleQuant enables 8-bit quantization of NF4 block scales.
+	// It requires QuantizationNF4.
+	DoubleQuant bool
+	// ScaleBlockSize is the number of NF4 block scales sharing one scale.
+	// It must be positive when DoubleQuant is true.
 	ScaleBlockSize int
 }
 

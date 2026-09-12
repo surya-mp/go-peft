@@ -51,7 +51,8 @@ go run ./cmd/go-peft inspect-model --model model-dir
 go run ./cmd/go-peft inspect-gguf --model model.gguf
 ```
 
-See [training integration](docs/training.md), [base-model loading](docs/base-models.md), and [GGUF](docs/gguf.md).
+See the [API reference](docs/api.md), [training integration](docs/training.md),
+[base-model loading](docs/base-models.md), and [GGUF](docs/gguf.md).
 
 ## Minimal CPU example
 

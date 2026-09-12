@@ -16,6 +16,8 @@ import (
 
 const maxHeaderSize = 100 << 20
 
+// Errors returned while parsing or encoding SafeTensors data.
+// Callers can test them with errors.Is.
 var (
 	ErrInvalidFile     = errors.New("safetensors: invalid file")
 	ErrUnsupportedType = errors.New("safetensors: unsupported dtype")
@@ -24,17 +26,23 @@ var (
 
 // Tensor is a row-major float32 tensor.
 type Tensor struct {
+	// Shape contains row-major dimensions.
 	Shape []int
-	Data  []float32
+	// Data contains row-major F32 values.
+	Data []float32
 }
 
 // DecodedTensor is one decoded SafeTensors value.
 // Visit keeps only this tensor's data in memory at once.
 type DecodedTensor struct {
-	Name  string
+	// Name is the tensor key in the SafeTensors file.
+	Name string
+	// DType is the source SafeTensors dtype: F32, F16, or BF16.
 	DType string
+	// Shape contains row-major dimensions.
 	Shape []int
-	Data  []float32
+	// Data contains decoded F32 values.
+	Data []float32
 }
 
 // Visitor receives a decoded tensor while streaming a file.

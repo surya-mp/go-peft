@@ -15,11 +15,14 @@ import (
 	"github.com/surya-mp/go-peft/qlora"
 )
 
+// Standard Hugging Face PEFT adapter filenames.
 const (
 	ConfigFile = "adapter_config.json"
 	ModelFile  = "adapter_model.safetensors"
 )
 
+// Errors returned while reading or writing PEFT adapter files.
+// Callers can test them with errors.Is.
 var (
 	ErrUnsupportedBias  = errors.New("huggingface: bias=all is not portable without the base model")
 	ErrMergedAdapter    = errors.New("huggingface: merged adapters cannot be exported")
@@ -30,9 +33,12 @@ var (
 
 // Metadata identifies the base model represented by the adapter.
 type Metadata struct {
+	// BaseModelNameOrPath identifies the adapter's source base model.
 	BaseModelNameOrPath string
-	Revision            string
-	TaskType            string
+	// Revision identifies the optional base-model revision.
+	Revision string
+	// TaskType is the optional Hugging Face task identifier, such as CAUSAL_LM.
+	TaskType string
 }
 
 type configFile struct {

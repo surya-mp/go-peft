@@ -8,6 +8,8 @@ import (
 	"github.com/surya-mp/go-peft/backend"
 )
 
+// Errors returned while creating NF4 matrices.
+// Callers can test them with errors.Is.
 var (
 	ErrInvalidShape     = errors.New("nf4: invalid matrix shape")
 	ErrInvalidBlockSize = errors.New("nf4: block sizes must be positive")

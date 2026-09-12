@@ -2,6 +2,8 @@ package qlora
 
 import "errors"
 
+// Errors returned by QLoRA construction and adapter operations.
+// Callers can test them with errors.Is.
 var (
 	ErrInvalidName       = errors.New("qlora: name is required")
 	ErrUnsupportedEngine = errors.New("qlora: engine does not support quantized linear")

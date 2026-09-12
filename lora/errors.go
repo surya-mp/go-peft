@@ -1,8 +1,13 @@
-// Package lora provides LoRA configuration and, later, adapter primitives.
+// Package lora implements low-rank adapters over frozen linear weights.
+//
+// A Linear owns trainable A and B matrices. Inject integrates those layers into
+// a host through its Model interface; the host retains model ownership.
 package lora
 
 import "errors"
 
+// Errors returned by LoRA configuration, construction, and adapter operations.
+// Callers can test them with errors.Is.
 var (
 	ErrInvalidRank          = errors.New("lora: rank must be greater than zero")
 	ErrInvalidAlpha         = errors.New("lora: alpha must be finite and non-negative")

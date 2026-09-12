@@ -13,12 +13,15 @@ import (
 	"github.com/surya-mp/go-peft/format/safetensors"
 )
 
+// Standard Hugging Face SafeTensors model filenames.
 const (
 	ConfigFile = "config.json"
 	ModelFile  = "model.safetensors"
 	IndexFile  = "model.safetensors.index.json"
 )
 
+// Errors returned while inspecting or streaming base-model checkpoints.
+// Callers can test them with errors.Is.
 var (
 	ErrMissingModel  = errors.New("huggingface model: no SafeTensors model found")
 	ErrInvalidIndex  = errors.New("huggingface model: invalid SafeTensors index")
@@ -29,29 +32,45 @@ var (
 // Config contains common Hugging Face model configuration fields.
 // Unknown architecture-specific fields remain in config.json for its framework.
 type Config struct {
-	ModelType         string   `json:"model_type"`
-	Architectures     []string `json:"architectures"`
-	HiddenSize        int      `json:"hidden_size"`
-	IntermediateSize  int      `json:"intermediate_size"`
-	NumHiddenLayers   int      `json:"num_hidden_layers"`
-	NumAttentionHeads int      `json:"num_attention_heads"`
-	NumKeyValueHeads  int      `json:"num_key_value_heads"`
-	VocabSize         int      `json:"vocab_size"`
-	TorchDType        string   `json:"torch_dtype"`
+	// ModelType is Hugging Face's model-family identifier.
+	ModelType string `json:"model_type"`
+	// Architectures lists model implementation names from config.json.
+	Architectures []string `json:"architectures"`
+	// HiddenSize is the transformer hidden width.
+	HiddenSize int `json:"hidden_size"`
+	// IntermediateSize is the feed-forward hidden width.
+	IntermediateSize int `json:"intermediate_size"`
+	// NumHiddenLayers is the transformer block count.
+	NumHiddenLayers int `json:"num_hidden_layers"`
+	// NumAttentionHeads is the query-attention head count.
+	NumAttentionHeads int `json:"num_attention_heads"`
+	// NumKeyValueHeads is the key/value attention head count.
+	NumKeyValueHeads int `json:"num_key_value_heads"`
+	// VocabSize is the tokenizer vocabulary size.
+	VocabSize int `json:"vocab_size"`
+	// TorchDType is the source checkpoint's declared dtype.
+	TorchDType string `json:"torch_dtype"`
 }
 
 // Manifest describes indexed, sharded SafeTensors checkpoints.
 type Manifest struct {
-	Metadata  map[string]json.RawMessage `json:"metadata"`
-	WeightMap map[string]string          `json:"weight_map"`
+	// Metadata contains Hugging Face index metadata.
+	Metadata map[string]json.RawMessage `json:"metadata"`
+	// WeightMap maps tensor names to SafeTensors shard names.
+	WeightMap map[string]string `json:"weight_map"`
 }
 
 // Tensor is one decoded base-model tensor.
 type Tensor struct {
-	Name  string
+	// Name is the checkpoint tensor name.
+	Name string
+	// DType is the source SafeTensors dtype.
 	DType string
+	// Shape contains row-major dimensions.
 	Shape []int
-	Data  []float32
+	// Data contains decoded F32 values.
+	Data []float32
+	// Shard is the source filename relative to the model directory.
 	Shard string
 }
 
@@ -59,16 +78,21 @@ type Tensor struct {
 type Options struct {
 	// Filter limits tensors delivered to OnTensor. All tensors are still
 	// validated against an index when present.
-	Filter   func(name string) bool
+	Filter func(name string) bool
+	// OnTensor receives each selected tensor. It is required.
 	OnTensor func(Tensor) error
 }
 
 // Info identifies a base model without loading its tensor data.
 type Info struct {
-	Config      Config   `json:"config"`
-	Shards      []string `json:"shards"`
-	TensorCount int      `json:"tensor_count"` // -1 when an unindexed model has not been loaded
-	Indexed     bool     `json:"indexed"`
+	// Config is the parsed config.json subset.
+	Config Config `json:"config"`
+	// Shards lists SafeTensors files relative to the model directory.
+	Shards []string `json:"shards"`
+	// TensorCount is -1 until an unindexed model has been loaded.
+	TensorCount int `json:"tensor_count"`
+	// Indexed reports whether the model uses model.safetensors.index.json.
+	Indexed bool `json:"indexed"`
 }
 
 // ReadConfig reads config.json from a Hugging Face model directory.

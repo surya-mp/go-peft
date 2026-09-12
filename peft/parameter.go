@@ -9,8 +9,11 @@ var ErrInvalidParameterShape = errors.New("peft: parameter dimensions must be po
 
 // Parameter describes a model or adapter parameter without owning its tensor.
 type Parameter struct {
-	Name      string
-	Shape     []int
+	// Name is the stable framework-neutral parameter identifier.
+	Name string
+	// Shape is a copy of the parameter dimensions.
+	Shape []int
+	// Trainable reports whether an optimizer should update this parameter.
 	Trainable bool
 }
 
