@@ -12,9 +12,6 @@
 
 The GoMLX dependency currently cannot run under Go's race detector.
 
-Native CUDA validation details and the latest uncached test output are recorded in
-[CUDA validation and context fix](cuda-context-fix-2026-09-11.md#fresh-validation-after-benchmark-publication).
-
 MLX C exposes native packed affine int4 operations only. Its QLoRA bridge
 therefore rejects NF4 and double quantization rather than silently dequantizing
 the base model. NF4/double quant are available on CPU, GoMLX, and CUDA.

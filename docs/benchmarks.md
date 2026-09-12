@@ -58,10 +58,3 @@ ok  	github.com/surya-mp/go-peft/backends/cuda	4.091s
 
 An MLX context pins its creating goroutine to an OS thread until `Close`; use
 and close it from that goroutine.
-
-## CUDA test validation
-
-After publishing these CUDA measurements, the native library was rebuilt and
-`go test -count=1 -v -tags cuda ./backends/cuda` passed all seven tests.
-`go test -count=1 -v -tags cuda ./...` passed 62 tests and three fuzz seed suites,
-with no failures or skips. [Complete fresh output](cuda-context-fix-2026-09-11.md#fresh-validation-after-benchmark-publication).

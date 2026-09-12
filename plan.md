@@ -1,13 +1,14 @@
 # go-peft
 Parameter-Efficient Fine-Tuning for Go
-Status: Phase 0–10 implemented; CUDA native validation is complete; benchmark publication remains
+Status: Phase 0–10 implemented; CUDA native validation and benchmark publication are complete; release verification and tagging remain
 
 Current work:
 
-1. [in progress] CUDA benchmark publication from the final merged NVIDIA worktree
+1. [complete] CUDA native validation and benchmark publication on NVIDIA
 2. [complete] Model-family profiles and injection dry-runs
 3. [complete] Backend-neutral training loop utilities and CLI inspection
 4. [complete] Base-model SafeTensors streaming and read-only GGUF v3 inspection; GGUF execution remains backend-specific
+5. [in progress] Release commit, CI verification, and semantic-version tagging
 Initial implementation: LoRA
 Long-term goal: LoRA, QLoRA, DoRA, and other PEFT methods
 Primary language: Go

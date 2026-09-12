@@ -184,8 +184,7 @@ an NVIDIA GPU; it cannot run on Apple Silicon.
 For a Windows NVIDIA host, run this Linux-only bridge in WSL2 Ubuntu with GPU
 passthrough. Native Windows CUDA builds are not supported yet.
 
-See the [latest CUDA test output](docs/cuda-context-fix-2026-09-11.md#fresh-validation-after-benchmark-publication) and
-[measured CUDA benchmarks](docs/benchmarks.md).
+See [measured CUDA benchmarks](docs/benchmarks.md).
 
 ## Integrations
 
