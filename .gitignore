@@ -26,8 +26,3 @@ coverage/
 .vscode/
 *.swp
 *.swo
-
-# Maintainer-only release notes.
-CHANGELOG.md
-CONTRIBUTING.md
-RELEASING.md
