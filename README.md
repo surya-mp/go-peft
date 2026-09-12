@@ -178,11 +178,14 @@ go run -tags cuda ./examples/qlora/cuda
 ```
 
 Set `CGO_LDFLAGS=-L$CUDA_HOME/lib64` when CUDA is not at `/usr/local/cuda`.
-Regular builds never link CUDA. The native suite needs an NVIDIA runner; it is
-not runnable on this Apple Silicon development machine.
+Regular builds never link CUDA. The native suite requires Linux, cgo, and
+an NVIDIA GPU; it cannot run on Apple Silicon.
 
 For a Windows NVIDIA host, run this Linux-only bridge in WSL2 Ubuntu with GPU
 passthrough. Native Windows CUDA builds are not supported yet.
+
+See the [latest CUDA test output](docs/cuda-context-fix-2026-09-11.md#fresh-validation-after-benchmark-publication) and
+[measured CUDA benchmarks](docs/benchmarks.md).
 
 ## Integrations
 
@@ -210,7 +213,7 @@ The functional PEFT-parity suite is written in Go. See
 
 ## Roadmap
 
-1. NVIDIA-runner benchmark publication and CUDA kernel tuning
+1. CUDA kernel tuning and broader NVIDIA-runner coverage
 2. More Hugging Face base-model fixtures and PEFT methods
 
 ## Release quality

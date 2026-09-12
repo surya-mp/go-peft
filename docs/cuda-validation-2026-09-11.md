@@ -407,3 +407,7 @@ i! Time: 2026-09-11T18:11:50 elapsed from start 0.000000 minutes or 0.000000 sec
 i!Process=10819; Thread=134298931191808; GPU=0; Handle=POINTER (IN HEX:0x0x2814e2d0); StreamId=POINTER (IN HEX:0x(nil)) (defaultStream); MathMode=CUBLAS_DEFAULT_MATH
 i! COMPILED WITH: GNU GCC/G++ / 8.5.0 20210514 (Red Hat 8.5.0-26)
 ```
+
+## Latest follow-up
+
+The [fresh native CUDA and complete-suite output](cuda-context-fix-2026-09-11.md#fresh-validation-after-benchmark-publication) records the post-fix rerun after benchmark publication. Earlier results above remain a historical record.

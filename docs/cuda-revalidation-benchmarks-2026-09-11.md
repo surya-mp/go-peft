@@ -902,3 +902,7 @@ i! COMPILED WITH: GNU GCC/G++ / 8.5.0 20210514 (Red Hat 8.5.0-26)
  M trainer/trainer.go
  M trainer/trainer_test.go
 ```
+
+## Latest follow-up
+
+The [fresh native CUDA and complete-suite output](cuda-context-fix-2026-09-11.md#fresh-validation-after-benchmark-publication) records the post-fix rerun after benchmark publication. Earlier results above remain a historical record.
