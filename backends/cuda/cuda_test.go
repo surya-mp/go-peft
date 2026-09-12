@@ -6,6 +6,7 @@ import (
 	"errors"
 	"math"
 	"math/rand"
+	"runtime"
 	"testing"
 
 	"github.com/surya-mp/go-peft/backend"
@@ -342,4 +343,58 @@ func same(got, want []float32) bool {
 		}
 	}
 	return true
+}
+
+// A Go goroutine can enter cuBLAS on a different OS thread from NewDevice.
+// Keep the creating thread occupied so the worker cannot reuse it.
+func TestGemmOnDifferentOSThread(t *testing.T) {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	engine := testEngine(t)
+	const rows, cols = 32, 512
+	identity := make([]float32, cols*cols)
+	for i := range cols {
+		identity[i*cols+i] = 1
+	}
+	values := make([]float32, rows*cols)
+	for i := range values {
+		values[i] = float32(i%17-8) / 8
+	}
+	weight, err := engine.DecodeFloat32(cols, cols, identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer weight.(*Tensor).Close()
+	input, err := engine.DecodeFloat32(rows, cols, values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer input.(*Tensor).Close()
+	output, err := engine.New(rows, cols)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer output.(*Tensor).Close()
+	done := make(chan error, 1)
+	go func() {
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		if err := engine.Gemm(output, input, false, weight, true, 1, 0); err != nil {
+			done <- err
+			return
+		}
+		done <- engine.axpy(output, input, 1)
+	}()
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	got, _, _, err := engine.EncodeFloat32(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, value := range got {
+		if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) || math.Abs(float64(value-2*values[i])) > 1e-4 {
+			t.Fatalf("output[%d] = %v, want %v", i, value, 2*values[i])
+		}
+	}
 }

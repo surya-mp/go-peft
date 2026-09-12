@@ -11,6 +11,7 @@ thread_local char last_error[256];
 
 struct context {
   cublasHandle_t blas;
+  int device;
 };
 
 __device__ __constant__ float nf4_codebook[16] = {-1.f, -0.6961928f, -0.52507305f, -0.3949175f,
@@ -112,6 +113,7 @@ extern "C" int peft_cuda_device_count(int* count) {
 extern "C" int peft_cuda_new(void** pointer, int device) {
   if (cuda_status(cudaSetDevice(device))) return 1;
   context* value = new context{};
+  value->device = device;
   if (cublas_status(cublasCreate(&value->blas))) {
     delete value;
     return 1;
@@ -123,6 +125,7 @@ extern "C" int peft_cuda_new(void** pointer, int device) {
 extern "C" int peft_cuda_free_context(void* pointer) {
   context* value = static_cast<context*>(pointer);
   if (value == nullptr) return 0;
+  if (cuda_status(cudaSetDevice(value->device))) return 1;
   int status = cublas_status(cublasDestroy(value->blas));
   delete value;
   return status;
@@ -154,6 +157,8 @@ extern "C" int peft_cuda_gemm(void* raw_context, void* dst, const void* a, const
     int m, int n, int k, int a_cols, int b_cols, int transpose_a, int transpose_b,
     float alpha, float beta) {
   context* value = static_cast<context*>(raw_context);
+  // Go may enter this call on a different OS thread than context creation.
+  if (cuda_status(cudaSetDevice(value->device))) return 1;
   cublasOperation_t op_a = transpose_b ? CUBLAS_OP_T : CUBLAS_OP_N;
   cublasOperation_t op_b = transpose_a ? CUBLAS_OP_T : CUBLAS_OP_N;
   return cublas_status(cublasSgemm(value->blas, op_a, op_b, n, m, k, &alpha,
@@ -163,6 +168,8 @@ extern "C" int peft_cuda_gemm(void* raw_context, void* dst, const void* a, const
 
 extern "C" int peft_cuda_axpy(void* raw_context, void* dst, const void* src, int count, float alpha) {
   context* value = static_cast<context*>(raw_context);
+  // Go may enter this call on a different OS thread than context creation.
+  if (cuda_status(cudaSetDevice(value->device))) return 1;
   return cublas_status(cublasSaxpy(value->blas, count, &alpha, static_cast<const float*>(src), 1,
       static_cast<float*>(dst), 1));
 }
