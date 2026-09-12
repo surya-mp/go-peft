@@ -38,7 +38,8 @@ go test -parallel=1 -fuzz=FuzzInspectManifest -fuzztime=30s ./format/huggingface
 
 ## Training utilities
 
-`profiles` supplies target presets for Llama, Mistral, Qwen2, Gemma, and Phi-3.
+`profiles` supplies target presets for Llama, Mistral, Qwen2, dense Qwen3,
+Qwen3-MoE, Gemma, and Phi-3.
 `trainer` provides backend-neutral accumulation, gradient-clip hooks, reporting,
 and checkpoint cadence. The optional CLI inspects adapters and dry-runs target
 matching before model mutation.
@@ -133,6 +134,8 @@ QLoRA stores frozen base weights as signed int4 or NF4 and keeps A/B in F32.
 NF4 can double-quantize its block scales to 8-bit values. The default remains
 signed int4 for compatibility.
 `huggingface.SaveQLoRA` and `LoadQLoRAInto` use the same PEFT adapter format.
+The optional GoMLX bridge also exposes `NewNF4BaseLinear` for runtime adapters
+that must keep non-target projections quantized without creating LoRA state.
 
 ## MLX QLoRA
 

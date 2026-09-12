@@ -36,3 +36,39 @@ func TestPlanPhi3AndFailures(t *testing.T) {
 		t.Fatalf("empty plan = %v", err)
 	}
 }
+
+func TestQwen3UsesDenseQwenProjectionNames(t *testing.T) {
+	profile, err := Resolve(Qwen3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	targets, err := profile.Targets(AllLinear)
+	if err != nil || !reflect.DeepEqual(targets, []string{"q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"}) {
+		t.Fatalf("targets = %v, err = %v", targets, err)
+	}
+	plan, err := Plan(Qwen3, Attention, []string{"model.layers.0.self_attn.q_proj", "model.layers.0.self_attn.v_proj"})
+	if err != nil || len(plan.Matched) != 2 || plan.Family != Qwen3 {
+		t.Fatalf("plan = %#v, err = %v", plan, err)
+	}
+}
+
+func TestQwen3MoEIncludesExpertAndRouterTargets(t *testing.T) {
+	profile, err := Resolve(Qwen3MoE)
+	if err != nil {
+		t.Fatal(err)
+	}
+	targets, err := profile.Targets(AllLinear)
+	if err != nil || !reflect.DeepEqual(targets, []string{"q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "gate"}) {
+		t.Fatalf("targets = %v, err = %v", targets, err)
+	}
+	plan, err := Plan(Qwen3MoE, AllLinear, []string{
+		"model.layers.0.mlp.experts.3.gate_proj",
+		"model.layers.0.mlp.gate",
+	})
+	if err != nil || !reflect.DeepEqual(plan.Matched, []string{
+		"model.layers.0.mlp.experts.3.gate_proj",
+		"model.layers.0.mlp.gate",
+	}) {
+		t.Fatalf("plan = %#v, err = %v", plan, err)
+	}
+}

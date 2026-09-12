@@ -160,6 +160,19 @@ type NF4Linear struct {
 	dropout     float32
 }
 
+// NF4BaseLinear is a frozen NF4 projection without LoRA parameters.
+// It is used to keep non-adapted base projections quantized during QLoRA.
+type NF4BaseLinear struct {
+	packed      *model.Variable
+	scales      *model.Variable
+	scaleCodes  *model.Variable
+	scaleScales *model.Variable
+	bias        *model.Variable
+	in          int
+	out         int
+	block       int
+}
+
 // NF4Module is one host-discovered quantized linear module.
 type NF4Module struct {
 	// Name is the host model's fully qualified module name.
@@ -276,6 +289,9 @@ func NewNamedNF4Linear(name string, scope *model.Scope, weight *NF4Weight, bias 
 	if err := weight.validate(); err != nil {
 		return nil, err
 	}
+	if weight.OutputFeatures&1 != 0 {
+		return nil, errors.New("gomlx: NF4 output features must be even")
+	}
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
@@ -305,6 +321,45 @@ func NewNamedNF4Linear(name string, scope *model.Scope, weight *NF4Weight, bias 
 	return &NF4Linear{name: name, packed: packed, scales: scales, scaleCodes: scaleCodes, scaleScales: scaleScales, bias: bias, a: a, b: b, in: weight.InputFeatures, out: weight.OutputFeatures, block: weight.BlockSize, scaling: config.Alpha / float32(config.Rank), dropout: config.Dropout}, nil
 }
 
+// NewNF4BaseLinear creates a frozen NF4 projection without adapter variables.
+func NewNF4BaseLinear(scope *model.Scope, weight *NF4Weight, bias *model.Variable) (*NF4BaseLinear, error) {
+	if scope == nil {
+		return nil, errors.New("gomlx: scope is required")
+	}
+	if err := weight.validate(); err != nil {
+		return nil, err
+	}
+	if weight.OutputFeatures&1 != 0 {
+		return nil, errors.New("gomlx: NF4 output features must be even")
+	}
+	if bias != nil && (bias.Shape().Rank() != 1 || bias.Shape().Dimensions[0] != weight.OutputFeatures) {
+		return nil, errors.New("gomlx: bias shape must be [out_features]")
+	}
+	qScope := scope.In("nf4_base")
+	packed := qScope.VariableWithValue("packed", tensors.FromFlatDataAndDimensions(weight.Packed, weight.InputFeatures, (weight.OutputFeatures+1)/2)).SetTrainable(false)
+	blocks := (weight.OutputFeatures + weight.BlockSize - 1) / weight.BlockSize
+	base := &NF4BaseLinear{packed: packed, bias: bias, in: weight.InputFeatures, out: weight.OutputFeatures, block: weight.BlockSize}
+	if len(weight.ScaleCodes) == 0 {
+		base.scales = qScope.VariableWithValue("scales", tensors.FromFlatDataAndDimensions(weight.Scales, weight.InputFeatures, blocks)).SetTrainable(false)
+	} else {
+		base.scaleCodes = qScope.VariableWithValue("scale_codes", tensors.FromFlatDataAndDimensions(weight.ScaleCodes, weight.InputFeatures, blocks)).SetTrainable(false)
+		base.scaleScales = qScope.VariableWithValue("scale_scales", tensors.FromFlatDataAndDimensions(weight.ScaleScales, weight.InputFeatures, (blocks+weight.ScaleBlockSize-1)/weight.ScaleBlockSize)).SetTrainable(false)
+	}
+	if bias != nil {
+		bias.SetTrainable(false)
+	}
+	return base, nil
+}
+
+// Apply appends the frozen NF4 projection to input's graph.
+func (l *NF4BaseLinear) Apply(_ *model.Scope, input *graph.Node) *graph.Node {
+	packed := graph.Bitcast(l.packed.NodeValue(input), dtypes.Uint4)
+	weights := graph.Reshape(packed, l.in, l.out)
+	return nn.QuantizedDense(input, weights, &graph.Quantization{
+		Scheme: compute.QuantNF4, Scale: l.quantizationScales(input), BlockAxis: 1, BlockSize: l.block,
+	}, nodeValue(l.bias, input))
+}
+
 // Apply appends fused-or-decomposed NF4 dense and the LoRA branch to the graph.
 func (l *NF4Linear) Apply(scope *model.Scope, input *graph.Node) *graph.Node {
 	packed := graph.Bitcast(l.packed.NodeValue(input), dtypes.Uint4)
@@ -319,6 +374,23 @@ func (l *NF4Linear) Apply(scope *model.Scope, input *graph.Node) *graph.Node {
 }
 
 func (l *NF4Linear) quantizationScales(input *graph.Node) *graph.Node {
+	if l.scales != nil {
+		return l.scales.NodeValue(input)
+	}
+	blocks := (l.out + l.block - 1) / l.block
+	groups := l.scaleScales.Shape().Dimensions[1]
+	groupSize := (blocks + groups - 1) / groups
+	indices := make([]int32, blocks)
+	for index := range indices {
+		indices[index] = int32(index / groupSize)
+	}
+	group := graph.Reshape(graph.Const(input.Graph(), indices), blocks, 1)
+	expanded := graph.Gather(graph.Transpose(l.scaleScales.NodeValue(input), 0, 1), group)
+	expanded = graph.Transpose(expanded, 0, 1)
+	return graph.Mul(graph.ConvertDType(l.scaleCodes.NodeValue(input), dtypes.Float32), expanded)
+}
+
+func (l *NF4BaseLinear) quantizationScales(input *graph.Node) *graph.Node {
 	if l.scales != nil {
 		return l.scales.NodeValue(input)
 	}

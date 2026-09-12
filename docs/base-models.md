@@ -15,5 +15,10 @@ info, err := model.Load("./model", model.Options{
 
 Use `model.Inspect` when only model metadata and shard layout are needed. Its
 tensor count is `-1` for an unindexed file until `Load` has streamed it.
+
+Dense Qwen2 and Qwen3 checkpoints use the standard `q_proj`, `k_proj`,
+`v_proj`, `o_proj`, `gate_proj`, `up_proj`, and `down_proj` LoRA suffixes.
+Qwen3-MoE uses the same projections inside experts plus router `gate`; use the
+explicit `qwen3-moe` profile for all-linear work.
 The loader validates shard paths and every tensor in an index. Pass streamed
 tensors to the GoMLX, MLX, CUDA, or another bridge.

@@ -12,8 +12,10 @@ runner := trainer.Runner{
 err := runner.Run(ctx)
 ```
 
-`profiles` provides tested target suffixes for Llama, Mistral, Qwen2, Gemma,
-and Phi-3. Run `go-peft plan` before injection to confirm actual module names.
+`profiles` provides tested target suffixes for Llama, Mistral, Qwen2, dense
+Qwen3, Qwen3-MoE, Gemma, and Phi-3. The Qwen3-MoE all-linear profile includes
+expert projections and router/shared-expert gates. Run `go-peft plan` before
+injection to confirm actual module names.
 
 ```sh
 go run ./cmd/go-peft targets --family llama --mode all-linear

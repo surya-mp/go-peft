@@ -167,6 +167,40 @@ func TestNativeNF4Linear(t *testing.T) {
 	}
 }
 
+func TestNF4BaseLinear(t *testing.T) {
+	store := model.NewStore()
+	scope := store.RootScope().In("k_proj")
+	weight, err := QuantizeNF4WeightDouble(2, 2, 2, 2, []float32{1, -1, -1, 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	layer, err := NewNF4BaseLinear(scope, weight, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	exec, err := model.NewExec(gobackend.GetBackend(), store, func(scope *model.Scope, input *graph.Node) *graph.Node {
+		return layer.Apply(scope, input)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if output := call(t, exec); !closeSlice(output, []float32{-1, 1}) {
+		t.Fatalf("NF4 base forward = %v", output)
+	}
+}
+
+func TestNF4BaseLinearOddOutput(t *testing.T) {
+	store := model.NewStore()
+	scope := store.RootScope().In("lm_head")
+	weight, err := QuantizeNF4Weight(2, 3, 3, []float32{1, -1, 0.5, -1, 1, -0.5})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewNF4BaseLinear(scope, weight, nil); err == nil {
+		t.Fatal("odd NF4 output width must be rejected")
+	}
+}
+
 func TestNativeNF4DoubleQuantLinear(t *testing.T) {
 	store := model.NewStore()
 	scope := store.RootScope().In("q_proj")

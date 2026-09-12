@@ -20,11 +20,13 @@ type Family string
 
 // Family values identify supported transformer naming conventions.
 const (
-	Llama   Family = "llama"
-	Mistral Family = "mistral"
-	Qwen2   Family = "qwen2"
-	Gemma   Family = "gemma"
-	Phi3    Family = "phi3"
+	Llama    Family = "llama"
+	Mistral  Family = "mistral"
+	Qwen2    Family = "qwen2"
+	Qwen3    Family = "qwen3"
+	Qwen3MoE Family = "qwen3-moe"
+	Gemma    Family = "gemma"
+	Phi3     Family = "phi3"
 )
 
 // Mode selects attention-only or QLoRA-style all-linear targeting.
@@ -141,9 +143,11 @@ func (p InjectionPlan) Validate() error {
 }
 
 var profiles = map[Family]Profile{
-	Llama:   {Family: Llama, Attention: []string{"q_proj", "v_proj"}, Linear: []string{"q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"}},
-	Mistral: {Family: Mistral, Attention: []string{"q_proj", "v_proj"}, Linear: []string{"q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"}},
-	Qwen2:   {Family: Qwen2, Attention: []string{"q_proj", "v_proj"}, Linear: []string{"q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"}},
-	Gemma:   {Family: Gemma, Attention: []string{"q_proj", "v_proj"}, Linear: []string{"q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"}},
-	Phi3:    {Family: Phi3, Attention: []string{"qkv_proj", "o_proj"}, Linear: []string{"qkv_proj", "o_proj", "gate_up_proj", "down_proj"}},
+	Llama:    {Family: Llama, Attention: []string{"q_proj", "v_proj"}, Linear: []string{"q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"}},
+	Mistral:  {Family: Mistral, Attention: []string{"q_proj", "v_proj"}, Linear: []string{"q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"}},
+	Qwen2:    {Family: Qwen2, Attention: []string{"q_proj", "v_proj"}, Linear: []string{"q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"}},
+	Qwen3:    {Family: Qwen3, Attention: []string{"q_proj", "v_proj"}, Linear: []string{"q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"}},
+	Qwen3MoE: {Family: Qwen3MoE, Attention: []string{"q_proj", "v_proj"}, Linear: []string{"q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "gate"}},
+	Gemma:    {Family: Gemma, Attention: []string{"q_proj", "v_proj"}, Linear: []string{"q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"}},
+	Phi3:     {Family: Phi3, Attention: []string{"qkv_proj", "o_proj"}, Linear: []string{"qkv_proj", "o_proj", "gate_up_proj", "down_proj"}},
 }
