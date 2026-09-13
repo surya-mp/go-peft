@@ -41,8 +41,9 @@ go test -parallel=1 -fuzz=FuzzInspectManifest -fuzztime=30s ./format/huggingface
 `profiles` supplies target presets for Llama, Mistral, Qwen2, dense Qwen3,
 Qwen3-MoE, Gemma, and Phi-3.
 `trainer` provides backend-neutral accumulation, gradient-clip hooks, reporting,
-and checkpoint cadence. The optional CLI inspects adapters and dry-runs target
-matching before model mutation.
+checkpoint cadence, and adapter-only optimizer selection through
+`AdapterVariables` and `AdapterUpdater`. The optional CLI inspects adapters and
+dry-runs target matching before model mutation.
 
 ```sh
 go run ./cmd/go-peft targets --family llama --mode all-linear
