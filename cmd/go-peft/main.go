@@ -25,8 +25,7 @@ func main() {
 
 func run(args []string, output io.Writer) error {
 	if len(args) == 0 {
-		usage(output)
-		return nil
+		return usage(output)
 	}
 	switch args[0] {
 	case "targets":
@@ -40,8 +39,7 @@ func run(args []string, output io.Writer) error {
 	case "inspect-gguf":
 		return inspectGGUF(args[1:], output)
 	case "help", "-h", "--help":
-		usage(output)
-		return nil
+		return usage(output)
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
@@ -158,8 +156,8 @@ func writeJSON(output io.Writer, value any) error {
 	return encoder.Encode(value)
 }
 
-func usage(output io.Writer) {
-	fmt.Fprint(output, `go-peft commands:
+func usage(output io.Writer) error {
+	_, err := fmt.Fprint(output, `go-peft commands:
   targets --family llama --mode attention
   plan --family llama --mode all-linear --modules modules.txt
   inspect --adapter adapter-dir
@@ -167,4 +165,5 @@ func usage(output io.Writer) {
   inspect-model --model model-dir
   inspect-gguf --model model.gguf
 `)
+	return err
 }

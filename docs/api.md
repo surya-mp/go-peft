@@ -29,9 +29,15 @@ go doc github.com/surya-mp/go-peft/qlora
 | [`format/safetensors`](https://pkg.go.dev/github.com/surya-mp/go-peft/format/safetensors) | SafeTensors I/O | `Write` emits F32; `Visit` reads F32/F16/BF16. |
 | [`format/gguf`](https://pkg.go.dev/github.com/surya-mp/go-peft/format/gguf) | GGUF inspection | Reads v3 metadata and index; never loads or executes GGML tensors. |
 | [`profiles`](https://pkg.go.dev/github.com/surya-mp/go-peft/profiles) | Target-module presets | Plan and validate model targets before injection. |
-| [`trainer`](https://pkg.go.dev/github.com/surya-mp/go-peft/trainer) | Training-loop coordination | Host owns autograd, optimizer, batches, and mixed precision. |
+| [`trainer`](https://pkg.go.dev/github.com/surya-mp/go-peft/trainer) | Training-loop coordination | Host owns autograd, batches, and optimizer implementation; `AdapterUpdater` limits updates to PEFT variables. |
 
 Framework bridges are opt-in: [`backends/gomlx`](https://pkg.go.dev/github.com/surya-mp/go-peft/backends/gomlx), [`backends/mlx`](https://pkg.go.dev/github.com/surya-mp/go-peft/backends/mlx), and [`backends/cuda`](https://pkg.go.dev/github.com/surya-mp/go-peft/backends/cuda).
+
+## Adapter-only updates
+
+`trainer.AdapterVariables` returns a defensive copy of an adapter's trainable
+variables. `trainer.AdapterUpdater` passes only that set to a caller-provided
+optimizer. It does not implement autograd or select an optimizer.
 
 ## LoRA
 

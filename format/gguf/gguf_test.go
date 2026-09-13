@@ -47,7 +47,11 @@ func TestReadRejectsUnsupportedVersion(t *testing.T) {
 func TestReadRejectsMissingArchitectureAndInvalidTensorOffset(t *testing.T) {
 	t.Run("architecture", func(t *testing.T) {
 		data := fixture()
-		copy(data[bytes.Index(data, []byte("general.architecture")):], "xeneral.architecture")
+		position := bytes.Index(data, []byte("general.architecture"))
+		if position < 0 {
+			t.Fatal("fixture has no architecture key")
+		}
+		copy(data[position:], "xeneral.architecture")
 		path := filepath.Join(t.TempDir(), "missing.gguf")
 		if err := os.WriteFile(path, data, 0o600); err != nil {
 			t.Fatal(err)
