@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -84,6 +85,29 @@ func TestVisitSkipsUnwantedTensor(t *testing.T) {
 	}
 	if !reflect.DeepEqual(names, []string{"keep"}) {
 		t.Fatalf("visited %v", names)
+	}
+}
+
+func TestVisitWithOptionsReportsProgress(t *testing.T) {
+	var file bytes.Buffer
+	if err := Write(&file, map[string]Tensor{
+		"keep": {Shape: []int{1}, Data: []float32{2}},
+		"skip": {Shape: []int{1}, Data: []float32{1}},
+	}, nil); err != nil {
+		t.Fatal(err)
+	}
+	var messages []string
+	_, err := VisitWithOptions(&file, func(name string) bool { return name == "keep" }, func(tensor DecodedTensor) error {
+		return nil
+	}, VisitOptions{Progress: func(message string) { messages = append(messages, message) }, ProgressEvery: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(messages, "\n")
+	for _, want := range []string{"safetensors: reading header length", "safetensors: parsed header", "safetensors: decoding tensor", "safetensors: finished file"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("progress %q missing from %v", want, messages)
+		}
 	}
 }
 

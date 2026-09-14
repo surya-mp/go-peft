@@ -48,6 +48,15 @@ type DecodedTensor struct {
 // Visitor receives a decoded tensor while streaming a file.
 type Visitor func(DecodedTensor) error
 
+// VisitOptions controls SafeTensors streaming diagnostics.
+type VisitOptions struct {
+	// Progress receives human-readable status messages while the file is read.
+	Progress func(string)
+	// ProgressEvery reports selected tensor decode progress every N tensors.
+	// When zero, only file/header milestones are reported.
+	ProgressEvery int
+}
+
 type headerTensor struct {
 	DType       string    `json:"dtype"`
 	Shape       []int     `json:"shape"`
@@ -200,10 +209,17 @@ func ReadFile(path string) (map[string]Tensor, map[string]string, error) {
 // Visit streams F32, F16, and BF16 tensors in file-offset order.
 // keep may be nil; a false result skips decoding that tensor.
 func Visit(r io.Reader, keep func(name string) bool, visit Visitor) (map[string]string, error) {
+	return VisitWithOptions(r, keep, visit, VisitOptions{})
+}
+
+// VisitWithOptions streams F32, F16, and BF16 tensors in file-offset order with
+// optional progress reporting.
+func VisitWithOptions(r io.Reader, keep func(name string) bool, visit Visitor, options VisitOptions) (map[string]string, error) {
 	if visit == nil {
 		return nil, fmt.Errorf("%w: visitor is required", ErrInvalidTensor)
 	}
 	var length [8]byte
+	progressf(options.Progress, "safetensors: reading header length")
 	if _, err := io.ReadFull(r, length[:]); err != nil {
 		return nil, fmt.Errorf("%w: header length: %v", ErrInvalidFile, err)
 	}
@@ -211,6 +227,7 @@ func Visit(r io.Reader, keep func(name string) bool, visit Visitor) (map[string]
 	if headerSize == 0 || headerSize > maxHeaderSize {
 		return nil, ErrInvalidFile
 	}
+	progressf(options.Progress, "safetensors: reading header bytes=%d", headerSize)
 	rawHeader := make([]byte, headerSize)
 	if _, err := io.ReadFull(r, rawHeader); err != nil {
 		return nil, fmt.Errorf("%w: header: %v", ErrInvalidFile, err)
@@ -222,6 +239,7 @@ func Visit(r io.Reader, keep func(name string) bool, visit Visitor) (map[string]
 	if err != nil {
 		return nil, err
 	}
+	progressf(options.Progress, "safetensors: parsed header tensors=%d", len(header))
 
 	type entry struct {
 		name   string
@@ -245,6 +263,7 @@ func Visit(r io.Reader, keep func(name string) bool, visit Visitor) (map[string]
 		entries = append(entries, entry{name: name, tensor: tensor, bytes: bytes})
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].tensor.DataOffsets[0] < entries[j].tensor.DataOffsets[0] })
+	progressf(options.Progress, "safetensors: streaming tensors=%d", len(entries))
 	var expected uint64
 	for _, entry := range entries {
 		if entry.tensor.DataOffsets[0] != expected || entry.bytes > math.MaxInt64 {
@@ -253,12 +272,15 @@ func Visit(r io.Reader, keep func(name string) bool, visit Visitor) (map[string]
 		expected += entry.bytes
 	}
 
-	for _, entry := range entries {
+	for index, entry := range entries {
 		if keep != nil && !keep(entry.name) {
 			if _, err := io.CopyN(io.Discard, r, int64(entry.bytes)); err != nil {
 				return nil, fmt.Errorf("%w: tensor data: %v", ErrInvalidFile, err)
 			}
 			continue
+		}
+		if shouldReportTensor(index+1, len(entries), options.ProgressEvery) {
+			progressf(options.Progress, "safetensors: decoding tensor %d/%d %s shape=%v dtype=%s bytes=%d", index+1, len(entries), entry.name, entry.tensor.Shape, entry.tensor.DType, entry.bytes)
 		}
 		data, err := decode(r, entry.tensor.DType, entry.tensor.Shape)
 		if err != nil {
@@ -271,17 +293,40 @@ func Visit(r io.Reader, keep func(name string) bool, visit Visitor) (map[string]
 	if err := requireEOF(r); err != nil {
 		return nil, err
 	}
+	progressf(options.Progress, "safetensors: finished file")
 	return metadata, nil
 }
 
 // VisitFile opens and streams a SafeTensors file.
 func VisitFile(path string, keep func(name string) bool, visit Visitor) (map[string]string, error) {
+	return VisitFileWithOptions(path, keep, visit, VisitOptions{})
+}
+
+// VisitFileWithOptions opens and streams a SafeTensors file with optional
+// progress reporting.
+func VisitFileWithOptions(path string, keep func(name string) bool, visit Visitor, options VisitOptions) (map[string]string, error) {
+	progressf(options.Progress, "safetensors: opening file %s", path)
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = file.Close() }()
-	return Visit(file, keep, visit)
+	metadata, err := VisitWithOptions(file, keep, visit, options)
+	if err != nil {
+		return nil, err
+	}
+	progressf(options.Progress, "safetensors: closed file %s", path)
+	return metadata, nil
+}
+
+func progressf(progress func(string), format string, args ...any) {
+	if progress != nil {
+		progress(fmt.Sprintf(format, args...))
+	}
+}
+
+func shouldReportTensor(index, total, every int) bool {
+	return every > 0 && (index == 1 || index == total || index%every == 0)
 }
 
 func parseHeader(raw []byte) (map[string]headerTensor, map[string]string, error) {

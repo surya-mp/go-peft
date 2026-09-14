@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/surya-mp/go-peft/format/safetensors"
@@ -86,6 +87,29 @@ func TestLoadSingleModel(t *testing.T) {
 	}
 	if info.TensorCount != 1 {
 		t.Fatalf("loaded = %#v", info)
+	}
+}
+
+func TestLoadReportsProgress(t *testing.T) {
+	dir := t.TempDir()
+	writeConfig(t, dir)
+	writeShard(t, dir, ModelFile, map[string]safetensors.Tensor{
+		"model.embed_tokens.weight": {Shape: []int{1, 2}, Data: []float32{1, 2}},
+	})
+	var messages []string
+	_, err := Load(dir, Options{
+		Progress:      func(message string) { messages = append(messages, message) },
+		ProgressEvery: 1,
+		OnTensor:      func(Tensor) error { return nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(messages, "\n")
+	for _, want := range []string{"huggingface model: inspecting", "huggingface model: loading shard", "safetensors: reading header length", "safetensors: decoding tensor", "huggingface model: loaded tensors=1"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("progress %q missing from %v", want, messages)
+		}
 	}
 }
 

@@ -81,6 +81,11 @@ type Options struct {
 	Filter func(name string) bool
 	// OnTensor receives each selected tensor. It is required.
 	OnTensor func(Tensor) error
+	// Progress receives human-readable status messages while model shards load.
+	Progress func(string)
+	// ProgressEvery reports selected tensor decode progress every N tensors.
+	// When zero, only model/shard milestones are reported.
+	ProgressEvery int
 }
 
 // Info identifies a base model without loading its tensor data.
@@ -156,12 +161,15 @@ func Load(dir string, options Options) (Info, error) {
 	if options.OnTensor == nil {
 		return Info{}, errors.New("huggingface model: OnTensor is required")
 	}
+	progressf(options.Progress, "huggingface model: inspecting %s", dir)
 	info, err := Inspect(dir)
 	if err != nil {
 		return Info{}, err
 	}
+	progressf(options.Progress, "huggingface model: found shards=%d indexed=%t tensor_count=%d", len(info.Shards), info.Indexed, info.TensorCount)
 	var expected map[string]string
 	if info.Indexed {
+		progressf(options.Progress, "huggingface model: reading index")
 		manifest, err := ReadManifest(dir)
 		if err != nil {
 			return Info{}, err
@@ -169,9 +177,10 @@ func Load(dir string, options Options) (Info, error) {
 		expected = manifest.WeightMap
 	}
 	seen := make(map[string]struct{})
-	for _, shard := range info.Shards {
+	for shardIndex, shard := range info.Shards {
 		path := filepath.Join(dir, shard)
-		_, err := safetensors.VisitFile(path, nil, func(decoded safetensors.DecodedTensor) error {
+		progressf(options.Progress, "huggingface model: loading shard %d/%d %s", shardIndex+1, len(info.Shards), shard)
+		_, err := safetensors.VisitFileWithOptions(path, nil, func(decoded safetensors.DecodedTensor) error {
 			if info.Indexed {
 				wanted, ok := expected[decoded.Name]
 				if !ok || wanted != shard {
@@ -188,10 +197,11 @@ func Load(dir string, options Options) (Info, error) {
 			return options.OnTensor(Tensor{
 				Name: decoded.Name, DType: decoded.DType, Shape: decoded.Shape, Data: decoded.Data, Shard: shard,
 			})
-		})
+		}, safetensors.VisitOptions{Progress: options.Progress, ProgressEvery: options.ProgressEvery})
 		if err != nil {
 			return Info{}, err
 		}
+		progressf(options.Progress, "huggingface model: finished shard %d/%d %s", shardIndex+1, len(info.Shards), shard)
 	}
 	if info.Indexed && len(seen) != len(expected) {
 		for name := range expected {
@@ -203,7 +213,14 @@ func Load(dir string, options Options) (Info, error) {
 	if !info.Indexed {
 		info.TensorCount = len(seen)
 	}
+	progressf(options.Progress, "huggingface model: loaded tensors=%d", len(seen))
 	return info, nil
+}
+
+func progressf(progress func(string), format string, args ...any) {
+	if progress != nil {
+		progress(fmt.Sprintf(format, args...))
+	}
 }
 
 func manifestShards(manifest Manifest) ([]string, error) {
