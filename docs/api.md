@@ -109,6 +109,10 @@ layout, or `model.Load` to stream tensors directly into a framework bridge:
 Pass `model.Options.OnTensor` to allocate each decoded tensor in the target
 framework. The loader deliberately does not choose or retain framework tensors.
 
+`model.Options.Progress` and `safetensors.VisitOptions.Progress` provide
+human-readable load diagnostics. Do not parse them. `ProgressEvery` counts only
+selected decoded tensors; zero reports file and shard milestones only.
+
 ## Runtime and bridge selection
 
 `backend.NewRuntime` requires a supplied CUDA engine by default. If CUDA is

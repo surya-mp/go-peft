@@ -104,7 +104,7 @@ func TestVisitWithOptionsReportsProgress(t *testing.T) {
 		t.Fatal(err)
 	}
 	joined := strings.Join(messages, "\n")
-	for _, want := range []string{"safetensors: reading header length", "safetensors: parsed header", "safetensors: decoding tensor", "safetensors: finished file"} {
+	for _, want := range []string{"safetensors: reading header length", "safetensors: parsed header", "safetensors: decoding tensor 1/1 keep", "safetensors: finished file"} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("progress %q missing from %v", want, messages)
 		}

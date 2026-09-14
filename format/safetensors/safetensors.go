@@ -242,9 +242,10 @@ func VisitWithOptions(r io.Reader, keep func(name string) bool, visit Visitor, o
 	progressf(options.Progress, "safetensors: parsed header tensors=%d", len(header))
 
 	type entry struct {
-		name   string
-		tensor headerTensor
-		bytes  uint64
+		name     string
+		tensor   headerTensor
+		bytes    uint64
+		selected bool
 	}
 	entries := make([]entry, 0, len(header))
 	for name, tensor := range header {
@@ -271,16 +272,25 @@ func VisitWithOptions(r io.Reader, keep func(name string) bool, visit Visitor, o
 		}
 		expected += entry.bytes
 	}
+	selectedTotal := 0
+	for index := range entries {
+		entries[index].selected = keep == nil || keep(entries[index].name)
+		if entries[index].selected {
+			selectedTotal++
+		}
+	}
 
-	for index, entry := range entries {
-		if keep != nil && !keep(entry.name) {
+	selectedIndex := 0
+	for _, entry := range entries {
+		if !entry.selected {
 			if _, err := io.CopyN(io.Discard, r, int64(entry.bytes)); err != nil {
 				return nil, fmt.Errorf("%w: tensor data: %v", ErrInvalidFile, err)
 			}
 			continue
 		}
-		if shouldReportTensor(index+1, len(entries), options.ProgressEvery) {
-			progressf(options.Progress, "safetensors: decoding tensor %d/%d %s shape=%v dtype=%s bytes=%d", index+1, len(entries), entry.name, entry.tensor.Shape, entry.tensor.DType, entry.bytes)
+		selectedIndex++
+		if shouldReportTensor(selectedIndex, selectedTotal, options.ProgressEvery) {
+			progressf(options.Progress, "safetensors: decoding tensor %d/%d %s shape=%v dtype=%s bytes=%d", selectedIndex, selectedTotal, entry.name, entry.tensor.Shape, entry.tensor.DType, entry.bytes)
 		}
 		data, err := decode(r, entry.tensor.DType, entry.tensor.Shape)
 		if err != nil {
